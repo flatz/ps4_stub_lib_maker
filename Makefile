@@ -1,50 +1,34 @@
-WINE = wine
-WINE_PATH_TOOL = winepath
+ifeq ($(TAUON_SDK_DIR),)
+$(error Error! TAUON_SDK_DIR variable is not set!)
+endif
 
-CC = $(WINE) orbis-clang
-LD = $(WINE) orbis-ld
-FIX_STUB = ./fix_stub.py
+TARGETS := lib
 
-OBJDIR = obj
-BLDDIR = build
+DIST = $(TAUON_SDK_DIR)
+export DIST
 
-TARGET = libtest
+.PHONY: all clean install install-headers
 
-COMMON_FLAGS = -Wall
-COMMON_FLAGS += -fdiagnostics-color=always
-COMMON_FLAGS += -I $(SCE_ORBIS_SDK_DIR)/target/include -I $(SCE_ORBIS_SDK_DIR)/target/include/common
-COMMON_FLAGS += -DNDEBUG
-COMMON_FLAGS += -g
-
-CFLAGS = $(COMMON_FLAGS)
-CFLAGS += -std=c11
-CFLAGS += -Wno-unused-variable -Wno-unused-function -Wno-unused-label -Werror=implicit-function-declaration -Wno-return-type
-CFLAGS += -fno-strict-aliasing
-CFLAGS += -fPIC
-CFLAGS += -O3
-
-SRCS = test.c
-OBJS = $(addprefix $(OBJDIR)/,$(SRCS:.c=.c.o))
-
-.PHONY: all clean
-
-all: post-build
-
-pre-build:
-	@mkdir -p $(BLDDIR)
-
-post-build: main-build
-
-main-build: pre-build
-	@$(MAKE) --no-print-directory lib
-
-lib: $(OBJS)
-	$(LD) $^ --oformat=prx --stub-only --prx-stub-output-dir=$(BLDDIR) -o $(BLDDIR)/$(TARGET).prx
-	$(FIX_STUB) $(BLDDIR)/$(TARGET)_stub_weak.a
-
-$(OBJDIR)/%.c.o: %.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+all:
+	@for target in $(TARGETS); do \
+		echo Entering directory $$target; \
+		$(MAKE) --no-print-directory -C $$target; \
+		echo Leaving directory $$target; \
+	done
 
 clean:
-	@rm -rf $(OBJDIR) $(BLDDIR)
+	@for target in $(TARGETS); do \
+		echo Cleaning directory $$target; \
+		$(MAKE) --no-print-directory -C $$target clean; \
+	done
+
+install: install-headers
+	@mkdir -p "$(DIST)/lib"
+	@for target in $(TARGETS); do \
+		echo Installing $$target; \
+		$(MAKE) --no-print-directory -C $$target install; \
+	done
+
+install-headers:
+	@mkdir -p "$(DIST)/include"
+	@cp -r include/* "$(DIST)/include/"
